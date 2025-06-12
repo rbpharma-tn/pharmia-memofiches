@@ -1,0 +1,245 @@
+@import "tailwindcss";
+
+:root {
+  /* Style Original - Fond blanc pur */
+  --background: #ffffff;
+  --foreground: #000000;
+
+  /* Nuances de gris pour interactions */
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+
+  /* Variables simplifiées */
+  --muted: var(--gray-500);
+  --muted-foreground: var(--gray-400);
+  --border: var(--gray-200);
+  --input: var(--gray-50);
+  --primary: var(--foreground);
+  --primary-foreground: var(--background);
+  --secondary: var(--gray-100);
+  --secondary-foreground: var(--foreground);
+  --accent: var(--gray-50);
+  --accent-foreground: var(--foreground);
+  --destructive: var(--gray-800);
+  --destructive-foreground: var(--background);
+  --ring: var(--gray-300);
+  --radius: 8px;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+}
+
+/* Style Scratch - Police et fond */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--background);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Animations personnalisées */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Classes utilitaires personnalisées */
+.animate-fadeIn { animation: fadeIn 0.3s ease-in-out; }
+.animate-scaleIn { animation: scaleIn 0.2s ease-out; }
+.animate-slideUp { animation: slideUp 0.3s ease-out; }
+
+/* Styles pour les flashcards */
+.flashcard-inner {
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+}
+.flashcard-front, .flashcard-back {
+  backface-visibility: hidden;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+.flashcard-back { transform: rotateY(180deg); }
+.rotate-y-180 { transform: rotateY(180deg); }
+
+/* Styles pour les termes du glossaire */
+.glossary-term {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--muted);
+  cursor: help;
+  transition: all 0.2s ease;
+}
+
+.glossary-term:hover {
+  text-decoration-color: var(--foreground);
+}
+
+/* Boutons Style Original */
+.btn-primary {
+  background-color: var(--foreground);
+  color: var(--background);
+  border: 2px solid var(--foreground);
+  padding: 12px 24px;
+  border-radius: var(--radius);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+}
+
+.btn-primary:hover {
+  background-color: var(--gray-800);
+  border-color: var(--gray-800);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  background-color: var(--background);
+  color: var(--foreground);
+  border: 2px solid var(--gray-300);
+  padding: 12px 24px;
+  border-radius: var(--radius);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+}
+
+.btn-secondary:hover {
+  background-color: var(--gray-50);
+  border-color: var(--gray-400);
+  transform: translateY(-1px);
+}
+
+.btn-secondary:active {
+  transform: translateY(0);
+}
+
+/* Cartes Style Scratch */
+.card {
+  background-color: var(--background);
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: 24px;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.card:hover {
+  border-color: var(--gray-300);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+/* Liens Style Scratch */
+.link {
+  color: var(--gray-600);
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  border-bottom: 1px solid transparent;
+}
+
+.link:hover {
+  color: var(--foreground);
+  border-bottom-color: var(--gray-300);
+}
+
+/* Styles spécifiques Scratch */
+.scratch-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.scratch-section {
+  padding: 40px 0;
+}
+
+.scratch-title {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-weight: 600;
+  font-size: 24px;
+  color: var(--foreground);
+  margin: 0 0 16px 0;
+  line-height: 1.3;
+}
+
+.scratch-subtitle {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-weight: 500;
+  font-size: 18px;
+  color: var(--foreground);
+  margin: 0 0 12px 0;
+  line-height: 1.4;
+}
+
+.scratch-text {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  color: var(--foreground);
+  line-height: 1.5;
+  margin: 0 0 16px 0;
+}
+
+.scratch-muted {
+  color: var(--gray-600);
+}

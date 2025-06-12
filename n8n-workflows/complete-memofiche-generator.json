@@ -1,0 +1,311 @@
+{
+  "name": "PharmIA - Générateur Complet de Mémofiches",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-complete-memofiche",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "memofiche-webhook",
+      "name": "Webhook Génération",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "generate-complete-memofiche"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validation et préparation des données d'entrée\nconst input = $json;\n\n// Validation des champs requis\nif (!input.topic || !input.knowledgeBase) {\n  throw new Error('Topic and knowledge base are required');\n}\n\n// Préparation du prompt optimisé\nconst prompt = `Tu es un expert en pédagogie pharmaceutique et en formation du personnel d'officine.\n\nMISSION: Créer une mémofiche éducative complète sur \"${input.topic}\".\n\nCONTEXTE:\n- Niveau: ${input.targetLevel || 'Débutant'}\n- Thème: ${input.theme || 'maladies-courantes'}\n- Sphère: ${input.therapeutic_area || 'Gynécologie'}\n- Public: Personnel de pharmacie d'officine\n\nBASE DE CONNAISSANCES:\n${input.knowledgeBase}\n\nINSTRUCTIONS:\n1. Utilise EXCLUSIVEMENT les informations de la base de connaissances\n2. Adapte au niveau \"${input.targetLevel || 'Débutant'}\"\n3. Structure pour l'apprentissage pratique en officine\n4. Inclus des cas concrets et situations réelles\n\nFORMAT JSON REQUIS:\n{\n  \"title\": \"Titre accrocheur\",\n  \"subtitle\": \"Sous-titre contextuel\",\n  \"description\": \"Description 2-3 lignes\",\n  \"level\": \"${input.targetLevel || 'Débutant'}\",\n  \"theme\": \"${input.theme || 'maladies-courantes'}\",\n  \"estimated_duration\": \"15-20 minutes\",\n  \"learning_objectives\": [\"Objectif 1\", \"Objectif 2\", \"Objectif 3\"],\n  \"content\": {\n    \"memo\": [\n      {\n        \"id\": \"cas_comptoir\",\n        \"title\": \"Cas comptoir\",\n        \"content\": \"Situation clinique réaliste\",\n        \"icon\": \"user\"\n      },\n      {\n        \"id\": \"questions_cles\",\n        \"title\": \"Questions clés\",\n        \"content\": \"Questions essentielles\",\n        \"icon\": \"help-circle\"\n      },\n      {\n        \"id\": \"pathologie\",\n        \"title\": \"Informations pathologie\",\n        \"content\": \"Physiopathologie adaptée\",\n        \"icon\": \"book\"\n      },\n      {\n        \"id\": \"orientation\",\n        \"title\": \"Critères orientation\",\n        \"content\": \"Quand orienter, signes alarme\",\n        \"icon\": \"arrow-right\"\n      },\n      {\n        \"id\": \"conseil\",\n        \"title\": \"Conseil et prise en charge\",\n        \"content\": \"Recommandations thérapeutiques\",\n        \"icon\": \"heart\"\n      }\n    ],\n    \"flashcards\": [\n      {\n        \"id\": \"card1\",\n        \"question\": \"Question courte\",\n        \"answer\": \"Réponse claire\",\n        \"difficulty\": \"easy|medium|hard\"\n      }\n    ],\n    \"quiz\": [\n      {\n        \"id\": \"q1\",\n        \"question\": \"Question QCM\",\n        \"options\": [\"A\", \"B\", \"C\", \"D\"],\n        \"correct_answer\": 0,\n        \"explanation\": \"Explication détaillée\",\n        \"difficulty\": \"easy|medium|hard\"\n      }\n    ],\n    \"glossary\": [\n      {\n        \"id\": \"term1\",\n        \"term\": \"Terme médical\",\n        \"definition\": \"Définition claire\",\n        \"category\": \"pathologie|medicament|procedure\"\n      }\n    ],\n    \"key_points\": [\"Point clé 1\", \"Point clé 2\", \"Point clé 3\"],\n    \"practical_tips\": [\"Astuce 1\", \"Astuce 2\", \"Astuce 3\"]\n  }\n}\n\nRéponds UNIQUEMENT en JSON valide, sans markdown.`;\n\nconst processedInput = {\n  ...input,\n  prompt: prompt,\n  timestamp: new Date().toISOString(),\n  workflow_id: 'complete-memofiche-generator'\n};\n\nreturn [{ json: processedInput }];"
+      },
+      "id": "input-processor",
+      "name": "Processeur d'Entrée",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4-turbo-preview",
+        "messages": {
+          "messageType": "multipleMessages",
+          "messages": [
+            {
+              "role": "system",
+              "message": "Tu es un expert en pédagogie pharmaceutique. Tu génères du contenu éducatif structuré en JSON pour la formation du personnel d'officine. Réponds UNIQUEMENT en JSON valide."
+            },
+            {
+              "role": "user",
+              "message": "={{ $json.prompt }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.7,
+          "max_tokens": 4000
+        },
+        "responseFormat": "json_object"
+      },
+      "id": "openai-generator",
+      "name": "Générateur OpenAI",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "model": "gemini-1.5-pro",
+        "prompt": "={{ $json.prompt }}",
+        "options": {
+          "temperature": 0.7
+        }
+      },
+      "id": "gemini-generator",
+      "name": "Générateur Gemini",
+      "type": "n8n-nodes-base.googleGemini",
+      "typeVersion": 1,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.provider }}",
+              "rightValue": "openai",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "provider-switch",
+      "name": "Sélecteur Provider",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Traitement et validation du contenu généré\nconst input = $input.first().json;\nconst generatedContent = $input.last().json;\n\nlet parsedContent;\ntry {\n  // Parse du JSON généré par l'IA\n  if (typeof generatedContent.message === 'string') {\n    parsedContent = JSON.parse(generatedContent.message.content || generatedContent.message);\n  } else {\n    parsedContent = generatedContent.message.content || generatedContent;\n  }\n} catch (error) {\n  throw new Error('Invalid JSON response from AI: ' + error.message);\n}\n\n// Validation des champs requis\nif (!parsedContent.title || !parsedContent.content) {\n  throw new Error('Generated content missing required fields');\n}\n\n// Enrichissement avec métadonnées\nconst enrichedContent = {\n  id: `memofiche_${Date.now()}`,\n  ...parsedContent,\n  metadata: {\n    created_by: input.provider === 'openai' ? 'OpenAI GPT-4' : 'Google Gemini',\n    source: 'Base de connaissances personnalisée',\n    version: '1.0',\n    last_updated: new Date().toISOString(),\n    workflow_generated: true,\n    original_input: {\n      topic: input.topic,\n      level: input.targetLevel,\n      theme: input.theme,\n      therapeutic_area: input.therapeutic_area\n    }\n  },\n  created_at: new Date().toISOString(),\n  is_published: false // Sera publié après validation\n};\n\nreturn [{ json: enrichedContent }];"
+      },
+      "id": "content-processor",
+      "name": "Processeur de Contenu",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "resource": "database",
+        "operation": "insert",
+        "table": "memofiches",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.id }}",
+            "title": "={{ $json.title }}",
+            "subtitle": "={{ $json.subtitle }}",
+            "description": "={{ $json.description }}",
+            "theme": "={{ $json.theme }}",
+            "level": "={{ $json.level }}",
+            "content": "={{ $json.content }}",
+            "learning_objectives": "={{ $json.learning_objectives }}",
+            "estimated_duration": "={{ $json.estimated_duration }}",
+            "metadata": "={{ $json.metadata }}",
+            "is_published": "={{ $json.is_published }}",
+            "created_at": "={{ $json.created_at }}",
+            "created_by": "n8n-workflow"
+          }
+        }
+      },
+      "id": "save-memofiche",
+      "name": "Sauvegarder Mémofiche",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.generate_variants }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-variants",
+      "name": "Vérifier Variantes",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Génération des variantes par niveau\nconst originalMemofiche = $json;\nconst levels = ['Débutant', 'Intermédiaire', 'Avancé'];\nconst currentLevel = originalMemofiche.level;\n\n// Créer les variantes pour les autres niveaux\nconst variants = levels\n  .filter(level => level !== currentLevel)\n  .map(level => ({\n    topic: originalMemofiche.metadata.original_input.topic,\n    knowledgeBase: 'Base de connaissances adaptée pour niveau ' + level,\n    targetLevel: level,\n    theme: originalMemofiche.theme,\n    therapeutic_area: originalMemofiche.metadata.original_input.therapeutic_area,\n    provider: originalMemofiche.metadata.created_by.includes('OpenAI') ? 'openai' : 'gemini',\n    is_variant: true,\n    parent_id: originalMemofiche.id\n  }));\n\nreturn variants.map(variant => ({ json: variant }));"
+      },
+      "id": "variants-generator",
+      "name": "Générateur de Variantes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1780, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  success: true,\n  data: $json,\n  message: 'Mémofiche générée et sauvegardée avec succès',\n  provider: $json.metadata.created_by,\n  workflow: 'n8n-complete-generator',\n  variants_generated: $json.variants ? $json.variants.length : 0\n} }}"
+      },
+      "id": "final-response",
+      "name": "Réponse Finale",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2000, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Génération": {
+      "main": [
+        [
+          {
+            "node": "Processeur d'Entrée",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processeur d'Entrée": {
+      "main": [
+        [
+          {
+            "node": "Sélecteur Provider",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sélecteur Provider": {
+      "main": [
+        [
+          {
+            "node": "Générateur OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Générateur Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Générateur OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Processeur de Contenu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Générateur Gemini": {
+      "main": [
+        [
+          {
+            "node": "Processeur de Contenu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processeur de Contenu": {
+      "main": [
+        [
+          {
+            "node": "Sauvegarder Mémofiche",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sauvegarder Mémofiche": {
+      "main": [
+        [
+          {
+            "node": "Vérifier Variantes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vérifier Variantes": {
+      "main": [
+        [
+          {
+            "node": "Générateur de Variantes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Réponse Finale",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Générateur de Variantes": {
+      "main": [
+        [
+          {
+            "node": "Réponse Finale",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "2.0.0",
+  "meta": {
+    "description": "Workflow complet de génération de mémofiches avec IA, sauvegarde et variantes",
+    "tags": ["pharmia", "memofiche", "generation", "openai", "gemini", "complete"]
+  }
+}

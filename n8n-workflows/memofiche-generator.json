@@ -1,0 +1,177 @@
+{
+  "name": "PharmIA - Générateur de Mémofiches",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-memofiche",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "generate-memofiche"
+    },
+    {
+      "parameters": {
+        "model": "gpt-4",
+        "messages": {
+          "messageType": "multipleMessages",
+          "messages": [
+            {
+              "role": "system",
+              "message": "Tu es un expert en pharmacie d'officine et en pédagogie. Tu crées des mémofiches éducatives structurées pour les professionnels de pharmacie. Chaque mémofiche doit contenir:\n\n1. Un cas comptoir réaliste\n2. Les questions à poser au patient\n3. Les informations sur la pathologie\n4. Les critères d'orientation vers le médecin\n5. Les conseils thérapeutiques\n\nFormat de sortie: JSON structuré avec sections définies."
+            },
+            {
+              "role": "user", 
+              "message": "Crée une mémofiche complète sur le sujet: {{ $json.topic }}\nThème: {{ $json.theme }}\nNiveau: {{ $json.level }}\nSphère thérapeutique: {{ $json.therapeutic_area }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 2000
+        }
+      },
+      "id": "openai-generator",
+      "name": "OpenAI - Générateur Contenu",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Traitement et structuration du contenu généré par l'IA\nconst aiResponse = $input.first().json.message.content;\n\ntry {\n  const parsedContent = JSON.parse(aiResponse);\n  \n  // Structure de la mémofiche\n  const memofiche = {\n    id: Date.now().toString(),\n    title: parsedContent.title,\n    subtitle: $json.therapeutic_area,\n    description: parsedContent.description,\n    theme: $json.theme,\n    level: $json.level,\n    image_url: null,\n    content: {\n      memo: parsedContent.sections || [],\n      flashcards: parsedContent.flashcards || [],\n      quiz: parsedContent.quiz || [],\n      glossary: parsedContent.glossary || [],\n      youtube_videos: []\n    },\n    created_at: new Date().toISOString(),\n    updated_at: new Date().toISOString(),\n    created_by: 'ai-generator',\n    is_published: false\n  };\n  \n  return [{ json: memofiche }];\n  \n} catch (error) {\n  // Fallback si le parsing JSON échoue\n  return [{\n    json: {\n      error: 'Erreur de parsing du contenu IA',\n      raw_content: aiResponse\n    }\n  }];\n}"
+      },
+      "id": "content-processor",
+      "name": "Processeur de Contenu",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "resource": "database",
+        "operation": "insert",
+        "table": "memofiches",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.id }}",
+            "title": "={{ $json.title }}",
+            "subtitle": "={{ $json.subtitle }}",
+            "description": "={{ $json.description }}",
+            "theme": "={{ $json.theme }}",
+            "level": "={{ $json.level }}",
+            "content": "={{ $json.content }}",
+            "created_at": "={{ $json.created_at }}",
+            "updated_at": "={{ $json.updated_at }}",
+            "created_by": "={{ $json.created_by }}",
+            "is_published": "={{ $json.is_published }}"
+          }
+        }
+      },
+      "id": "supabase-insert",
+      "name": "Supabase - Sauvegarde",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, memofiche_id: $json.id, title: $json.title } }}"
+      },
+      "id": "response-success",
+      "name": "Réponse Succès",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4",
+        "messages": {
+          "messageType": "multipleMessages", 
+          "messages": [
+            {
+              "role": "system",
+              "message": "Tu es un expert en évaluation pédagogique. Analyse le contenu de la mémofiche et détermine le niveau de difficulté approprié (Débutant, Intermédiaire, Avancé) basé sur:\n- Complexité des concepts\n- Niveau de détail requis\n- Prérequis nécessaires\n- Compétences cliniques impliquées"
+            },
+            {
+              "role": "user",
+              "message": "Évalue le niveau de cette mémofiche: {{ $json.title }}\nContenu: {{ $json.content }}"
+            }
+          ]
+        }
+      },
+      "id": "level-evaluator",
+      "name": "Évaluateur de Niveau",
+      "type": "n8n-nodes-base.openAi", 
+      "typeVersion": 1,
+      "position": [680, 480]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "OpenAI - Générateur Contenu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI - Générateur Contenu": {
+      "main": [
+        [
+          {
+            "node": "Processeur de Contenu", 
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processeur de Contenu": {
+      "main": [
+        [
+          {
+            "node": "Supabase - Sauvegarde",
+            "type": "main", 
+            "index": 0
+          },
+          {
+            "node": "Évaluateur de Niveau",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase - Sauvegarde": {
+      "main": [
+        [
+          {
+            "node": "Réponse Succès",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "versionId": "1.0.0",
+  "meta": {
+    "description": "Workflow automatisé pour générer des mémofiches éducatives avec IA",
+    "tags": ["pharmia", "education", "ai", "memofiche"]
+  }
+}

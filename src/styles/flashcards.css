@@ -1,0 +1,261 @@
+/* Styles pour les animations 3D des flashcards */
+
+.transform-style-preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+/* Animation de flip pour les cartes */
+.flip-card {
+  perspective: 1000px;
+  transition: transform 0.6s;
+}
+
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+}
+
+.flip-card.flipped .flip-card-inner {
+  transform: rotateY(180deg);
+}
+
+.flip-card-front, .flip-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.flip-card-front {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.flip-card-back {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  transform: rotateY(180deg);
+}
+
+/* Animations de hover */
+.flip-card:hover {
+  transform: scale(1.02);
+}
+
+/* Animations pour les boutons de navigation */
+.nav-button {
+  transition: all 0.3s ease;
+}
+
+.nav-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.nav-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Animations pour les indicateurs de progression */
+.progress-dot {
+  transition: all 0.3s ease;
+}
+
+.progress-dot:hover {
+  transform: scale(1.2);
+}
+
+/* Animations pour les quiz */
+.quiz-option {
+  transition: all 0.3s ease;
+}
+
+.quiz-option:hover:not(:disabled) {
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.quiz-option.correct {
+  animation: correctAnswer 0.6s ease;
+}
+
+.quiz-option.incorrect {
+  animation: incorrectAnswer 0.6s ease;
+}
+
+@keyframes correctAnswer {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); background-color: #10b981; }
+  100% { transform: scale(1); }
+}
+
+@keyframes incorrectAnswer {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+  100% { transform: translateX(0); }
+}
+
+/* Animations pour le glossaire */
+.glossary-term {
+  transition: all 0.3s ease;
+}
+
+.glossary-term:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Styles pour les mots en relief du glossaire */
+.glossary-highlight {
+  background: linear-gradient(120deg, #f3f4f6 0%, #e5e7eb 100%);
+  border-bottom: 2px solid #6b7280;
+  padding: 1px 3px;
+  border-radius: 3px;
+  cursor: help;
+  position: relative;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.glossary-highlight:hover {
+  background: linear-gradient(120deg, #e5e7eb 0%, #d1d5db 100%);
+  border-bottom-color: #374151;
+  transform: translateY(-1px);
+}
+
+/* Tooltip pour les mots du glossaire */
+.glossary-highlight::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1f2937;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: normal;
+  line-height: 1.4;
+  white-space: nowrap;
+  max-width: 300px;
+  white-space: normal;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.glossary-highlight::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(1px);
+  border: 5px solid transparent;
+  border-top-color: #1f2937;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  z-index: 1001;
+}
+
+.glossary-highlight:hover::after,
+.glossary-highlight:hover::before {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(-5px);
+}
+
+/* Animation de chargement pour l'explication de terme */
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Animations d'apparition */
+.fade-in {
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.slide-in-right {
+  animation: slideInRight 0.5s ease-out;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.slide-in-left {
+  animation: slideInLeft 0.5s ease-out;
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .flip-card {
+    perspective: 800px;
+  }
+  
+  .flip-card:hover {
+    transform: none;
+  }
+  
+  .quiz-option:hover:not(:disabled) {
+    transform: none;
+  }
+  
+  .glossary-term:hover {
+    transform: none;
+  }
+}
+
+/* Accessibilité */
+@media (prefers-reduced-motion: reduce) {
+  .flip-card,
+  .flip-card-inner,
+  .nav-button,
+  .progress-dot,
+  .quiz-option,
+  .glossary-term {
+    transition: none;
+    animation: none;
+  }
+  
+  .flip-card:hover,
+  .nav-button:hover:not(:disabled),
+  .quiz-option:hover:not(:disabled),
+  .glossary-term:hover {
+    transform: none;
+  }
+}

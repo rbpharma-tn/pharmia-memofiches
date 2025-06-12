@@ -1,0 +1,73 @@
+{
+  "name": "PharmIA - Test Simple Mémofiche",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "test-memofiche",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-test",
+      "name": "Webhook Test",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "test-memofiche"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Test simple de génération de mémofiche\nconst input = $json;\n\n// Validation\nif (!input.topic) {\n  throw new Error('Topic is required');\n}\n\n// Génération de contenu de test\nconst testMemofiche = {\n  id: `test_${Date.now()}`,\n  title: input.topic,\n  subtitle: `Test - Formation ${input.level || 'Débutant'}`,\n  description: `Mémofiche de test générée par n8n pour ${input.topic}`,\n  level: input.level || 'Débutant',\n  theme: input.theme || 'test',\n  estimated_duration: '10 minutes',\n  learning_objectives: [\n    `Comprendre ${input.topic}`,\n    'Tester le workflow n8n',\n    'Valider la génération automatique'\n  ],\n  content: {\n    memo: [\n      {\n        id: 'test_section',\n        title: 'Section de Test',\n        content: `**Test n8n pour ${input.topic}**\\n\\nCeci est un test de génération automatique via n8n.\\n\\n**Avantages du workflow :**\\n- Automatisation complète\\n- Traçabilité des processus\\n- Reproductibilité garantie\\n\\n**Données d'entrée :**\\n- Sujet: ${input.topic}\\n- Niveau: ${input.level || 'Débutant'}\\n- Thème: ${input.theme || 'test'}`,\n        icon: 'test'\n      }\n    ],\n    flashcards: [\n      {\n        id: 'test_card',\n        question: `Qu'est-ce que ${input.topic} ?`,\n        answer: `${input.topic} est le sujet de test pour valider le workflow n8n de PharmIA.`,\n        difficulty: 'easy'\n      }\n    ],\n    quiz: [\n      {\n        id: 'test_quiz',\n        question: `Quel est l'avantage principal du workflow n8n pour ${input.topic} ?`,\n        options: [\n          'Génération manuelle',\n          'Automatisation et reproductibilité',\n          'Interface complexe',\n          'Processus lent'\n        ],\n        correct_answer: 1,\n        explanation: 'Le workflow n8n permet une automatisation complète avec une reproductibilité garantie.',\n        difficulty: 'medium'\n      }\n    ],\n    glossary: [\n      {\n        id: 'test_term',\n        term: 'Workflow n8n',\n        definition: 'Processus automatisé de génération de mémofiches utilisant n8n comme orchestrateur.',\n        category: 'procedure'\n      }\n    ],\n    key_points: [\n      `Test réussi pour ${input.topic}`,\n      'Workflow n8n opérationnel',\n      'Génération automatique validée'\n    ],\n    practical_tips: [\n      'Utiliser n8n pour automatiser la génération',\n      'Tester régulièrement les workflows',\n      'Documenter les processus automatisés'\n    ]\n  },\n  metadata: {\n    created_by: 'n8n Workflow Test',\n    source: 'Test automatisé',\n    version: '1.0',\n    last_updated: new Date().toISOString(),\n    workflow_generated: true,\n    test_mode: true\n  },\n  created_at: new Date().toISOString()\n};\n\nreturn [{ json: testMemofiche }];"
+      },
+      "id": "test-generator",
+      "name": "Générateur Test",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  success: true,\n  data: $json,\n  message: 'Mémofiche de test générée avec succès par n8n',\n  workflow: 'simple-test',\n  timestamp: new Date().toISOString()\n} }}"
+      },
+      "id": "test-response",
+      "name": "Réponse Test",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Test": {
+      "main": [
+        [
+          {
+            "node": "Générateur Test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Générateur Test": {
+      "main": [
+        [
+          {
+            "node": "Réponse Test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1.0.0",
+  "meta": {
+    "description": "Workflow de test simple pour valider n8n avec PharmIA",
+    "tags": ["pharmia", "test", "memofiche", "simple"]
+  }
+}

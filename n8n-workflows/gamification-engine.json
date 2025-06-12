@@ -1,0 +1,236 @@
+{
+  "name": "PharmIA - Moteur de Gamification",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gamification-event",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "gamification-webhook",
+      "name": "Webhook Gamification",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "gamification-event"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Système de points et badges\nconst event = $json;\nconst userId = event.user_id;\nconst eventType = event.event_type; // 'memofiche_completed', 'quiz_passed', 'streak_achieved', etc.\nconst eventData = event.data;\n\n// Configuration des points par événement\nconst pointsConfig = {\n  'memofiche_completed': 100,\n  'quiz_passed': 50,\n  'perfect_score': 200,\n  'streak_3': 150,\n  'streak_7': 300,\n  'streak_30': 1000,\n  'theme_mastery': 500,\n  'level_up': 1000,\n  'first_completion': 50,\n  'daily_login': 10\n};\n\n// Calcul des points gagnés\nlet pointsEarned = pointsConfig[eventType] || 0;\n\n// Bonus multiplicateurs\nif (eventData.score >= 95) {\n  pointsEarned *= 1.5; // Bonus excellence\n}\n\nif (eventData.completion_time && eventData.completion_time < 300) {\n  pointsEarned *= 1.2; // Bonus rapidité\n}\n\n// Détection des badges à débloquer\nconst badgesToCheck = [];\n\nswitch (eventType) {\n  case 'memofiche_completed':\n    badgesToCheck.push('first_steps', 'explorer', 'dedicated_learner');\n    if (eventData.theme) {\n      badgesToCheck.push(`${eventData.theme}_specialist`);\n    }\n    break;\n  case 'quiz_passed':\n    badgesToCheck.push('quiz_master', 'knowledge_seeker');\n    break;\n  case 'perfect_score':\n    badgesToCheck.push('perfectionist', 'excellence_seeker');\n    break;\n}\n\nconst gamificationUpdate = {\n  user_id: userId,\n  event_type: eventType,\n  points_earned: Math.round(pointsEarned),\n  badges_to_check: badgesToCheck,\n  event_data: eventData,\n  timestamp: new Date().toISOString()\n};\n\nreturn [{ json: gamificationUpdate }];"
+      },
+      "id": "points-calculator",
+      "name": "Calculateur de Points",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "resource": "database",
+        "operation": "select",
+        "table": "user_gamification",
+        "filterType": "manual",
+        "conditions": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "condition": "equal",
+              "keyValue": "={{ $json.user_id }}"
+            }
+          ]
+        }
+      },
+      "id": "get-user-gamification",
+      "name": "Récupérer Gamification",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gestion des badges et niveaux\nconst currentData = $input.first().json;\nconst userGamification = $input.last().json[0] || {\n  user_id: currentData.user_id,\n  total_points: 0,\n  current_level: 1,\n  badges: [],\n  achievements: [],\n  streak_count: 0,\n  last_activity: null\n};\n\n// Mise à jour des points\nconst newTotalPoints = userGamification.total_points + currentData.points_earned;\n\n// Calcul du nouveau niveau (1000 points par niveau)\nconst newLevel = Math.floor(newTotalPoints / 1000) + 1;\nconst leveledUp = newLevel > userGamification.current_level;\n\n// Définition des badges disponibles\nconst badgeDefinitions = {\n  'first_steps': { name: 'Premiers Pas', condition: 'complete_first_memofiche', points_threshold: 0 },\n  'explorer': { name: 'Explorateur', condition: 'complete_5_memofiches', points_threshold: 500 },\n  'dedicated_learner': { name: 'Apprenant Dévoué', condition: 'complete_20_memofiches', points_threshold: 2000 },\n  'quiz_master': { name: 'Maître des Quiz', condition: 'pass_10_quizzes', points_threshold: 500 },\n  'perfectionist': { name: 'Perfectionniste', condition: 'achieve_5_perfect_scores', points_threshold: 1000 },\n  'maladies_courantes_specialist': { name: 'Spécialiste Maladies Courantes', condition: 'master_theme', points_threshold: 800 },\n  'ordonnances_specialist': { name: 'Spécialiste Ordonnances', condition: 'master_theme', points_threshold: 800 },\n  'streak_warrior': { name: 'Guerrier de la Régularité', condition: 'achieve_30_day_streak', points_threshold: 3000 }\n};\n\n// Vérification des nouveaux badges\nconst newBadges = [];\ncurrentData.badges_to_check.forEach(badgeId => {\n  if (!userGamification.badges.includes(badgeId) && badgeDefinitions[badgeId]) {\n    const badge = badgeDefinitions[badgeId];\n    if (newTotalPoints >= badge.points_threshold) {\n      newBadges.push({\n        id: badgeId,\n        name: badge.name,\n        earned_at: new Date().toISOString()\n      });\n    }\n  }\n});\n\n// Mise à jour de la streak\nconst today = new Date().toDateString();\nconst lastActivity = userGamification.last_activity ? new Date(userGamification.last_activity).toDateString() : null;\nconst yesterday = new Date(Date.now() - 86400000).toDateString();\n\nlet newStreakCount = userGamification.streak_count;\nif (lastActivity === yesterday) {\n  newStreakCount += 1;\n} else if (lastActivity !== today) {\n  newStreakCount = 1;\n}\n\n// Notifications à envoyer\nconst notifications = [];\n\nif (leveledUp) {\n  notifications.push({\n    type: 'level_up',\n    message: `Félicitations ! Vous avez atteint le niveau ${newLevel} !`,\n    points_bonus: 500\n  });\n}\n\nnewBadges.forEach(badge => {\n  notifications.push({\n    type: 'badge_earned',\n    message: `Nouveau badge débloqué : ${badge.name} !`,\n    badge: badge\n  });\n});\n\nif (newStreakCount > 0 && newStreakCount % 7 === 0) {\n  notifications.push({\n    type: 'streak_milestone',\n    message: `Incroyable ! ${newStreakCount} jours consécutifs d'apprentissage !`,\n    points_bonus: 100 * (newStreakCount / 7)\n  });\n}\n\nconst updatedGamification = {\n  user_id: currentData.user_id,\n  total_points: newTotalPoints + (leveledUp ? 500 : 0),\n  current_level: newLevel,\n  badges: [...userGamification.badges, ...newBadges.map(b => b.id)],\n  achievements: [...(userGamification.achievements || []), ...newBadges],\n  streak_count: newStreakCount,\n  last_activity: new Date().toISOString(),\n  notifications: notifications,\n  points_earned_this_session: currentData.points_earned + (leveledUp ? 500 : 0)\n};\n\nreturn [{ json: updatedGamification }];"
+      },
+      "id": "badge-processor",
+      "name": "Processeur de Badges",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "resource": "database",
+        "operation": "upsert",
+        "table": "user_gamification",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "user_id": "={{ $json.user_id }}",
+            "total_points": "={{ $json.total_points }}",
+            "current_level": "={{ $json.current_level }}",
+            "badges": "={{ $json.badges }}",
+            "achievements": "={{ $json.achievements }}",
+            "streak_count": "={{ $json.streak_count }}",
+            "last_activity": "={{ $json.last_activity }}"
+          }
+        }
+      },
+      "id": "update-gamification",
+      "name": "Mettre à jour Gamification",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.notifications.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-notifications",
+      "name": "Vérifier Notifications",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "resource": "database",
+        "operation": "insert",
+        "table": "user_notifications",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "user_id": "={{ $json.user_id }}",
+            "type": "gamification",
+            "title": "Récompenses débloquées !",
+            "message": "={{ $json.notifications.map(n => n.message).join(' ') }}",
+            "data": "={{ $json.notifications }}",
+            "created_at": "={{ new Date().toISOString() }}"
+          }
+        }
+      },
+      "id": "send-notifications",
+      "name": "Envoyer Notifications",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1560, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, points_earned: $json.points_earned_this_session, level: $json.current_level, new_badges: $json.achievements.slice(-$json.notifications.filter(n => n.type === 'badge_earned').length), notifications: $json.notifications } }}"
+      },
+      "id": "gamification-response",
+      "name": "Réponse Gamification",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1560, 400]
+    }
+  ],
+  "connections": {
+    "Webhook Gamification": {
+      "main": [
+        [
+          {
+            "node": "Calculateur de Points",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculateur de Points": {
+      "main": [
+        [
+          {
+            "node": "Récupérer Gamification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Récupérer Gamification": {
+      "main": [
+        [
+          {
+            "node": "Processeur de Badges",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processeur de Badges": {
+      "main": [
+        [
+          {
+            "node": "Mettre à jour Gamification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mettre à jour Gamification": {
+      "main": [
+        [
+          {
+            "node": "Vérifier Notifications",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vérifier Notifications": {
+      "main": [
+        [
+          {
+            "node": "Envoyer Notifications",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Réponse Gamification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Réponse Gamification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "versionId": "1.0.0",
+  "meta": {
+    "description": "Système de gamification avec points, badges et notifications",
+    "tags": ["pharmia", "gamification", "badges", "points"]
+  }
+}

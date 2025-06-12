@@ -1,0 +1,199 @@
+{
+  "name": "PharmIA - Évaluation Niveau Apprenant",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "assess-learner",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "assessment-webhook",
+      "name": "Webhook Évaluation",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "assess-learner"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "resource": "database",
+        "operation": "select",
+        "table": "user_progress",
+        "filterType": "manual",
+        "conditions": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "condition": "equal",
+              "keyValue": "={{ $json.user_id }}"
+            }
+          ]
+        }
+      },
+      "id": "get-user-progress",
+      "name": "Récupérer Progression",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Analyse des données de progression pour évaluation du niveau\nconst userProgress = $input.all();\nconst userId = $json.user_id;\n\n// Calcul des métriques d'évaluation\nlet totalCompleted = 0;\nlet totalScore = 0;\nlet completedByTheme = {};\nlet averageTimePerMemofiche = 0;\nlet streakCount = 0;\n\nuserProgress.forEach(progress => {\n  if (progress.json.completed) {\n    totalCompleted++;\n    totalScore += progress.json.score || 0;\n    \n    const theme = progress.json.theme;\n    if (!completedByTheme[theme]) {\n      completedByTheme[theme] = 0;\n    }\n    completedByTheme[theme]++;\n  }\n});\n\nconst averageScore = totalCompleted > 0 ? totalScore / totalCompleted : 0;\nconst themesDiversity = Object.keys(completedByTheme).length;\n\n// Algorithme de détermination du niveau\nlet suggestedLevel = 'Débutant';\nlet confidence = 0;\n\nif (totalCompleted >= 15 && averageScore >= 85 && themesDiversity >= 5) {\n  suggestedLevel = 'Avancé';\n  confidence = 0.9;\n} else if (totalCompleted >= 8 && averageScore >= 75 && themesDiversity >= 3) {\n  suggestedLevel = 'Intermédiaire';\n  confidence = 0.8;\n} else {\n  suggestedLevel = 'Débutant';\n  confidence = 0.7;\n}\n\n// Recommandations personnalisées\nconst recommendations = [];\n\nif (averageScore < 70) {\n  recommendations.push('Réviser les bases avant de progresser');\n}\n\nif (themesDiversity < 3) {\n  recommendations.push('Explorer d\\'autres thèmes pour une formation complète');\n}\n\nif (totalCompleted < 5) {\n  recommendations.push('Compléter plus de mémofiches pour une évaluation précise');\n}\n\nconst assessment = {\n  user_id: userId,\n  current_level: suggestedLevel,\n  confidence_score: confidence,\n  total_completed: totalCompleted,\n  average_score: averageScore,\n  themes_diversity: themesDiversity,\n  recommendations: recommendations,\n  assessed_at: new Date().toISOString(),\n  metrics: {\n    completed_by_theme: completedByTheme,\n    streak_count: streakCount\n  }\n};\n\nreturn [{ json: assessment }];"
+      },
+      "id": "level-analyzer",
+      "name": "Analyseur de Niveau",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4",
+        "messages": {
+          "messageType": "multipleMessages",
+          "messages": [
+            {
+              "role": "system",
+              "message": "Tu es un expert en pédagogie pharmaceutique. Analyse les données de progression d'un apprenant et fournis:\n1. Une validation du niveau suggéré\n2. Des recommandations pédagogiques personnalisées\n3. Un plan d'apprentissage adapté\n4. Des objectifs à court et moyen terme\n\nRéponds en JSON structuré."
+            },
+            {
+              "role": "user",
+              "message": "Analyse cette progression d'apprenant:\nNiveau suggéré: {{ $json.current_level }}\nScore moyen: {{ $json.average_score }}%\nMémofiches complétées: {{ $json.total_completed }}\nThèmes explorés: {{ $json.themes_diversity }}\nMétriques: {{ $json.metrics }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "ai-pedagogical-advisor",
+      "name": "Conseiller Pédagogique IA",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fusion des données d'analyse et des recommandations IA\nconst assessment = $input.first().json;\nconst aiRecommendations = JSON.parse($input.last().json.message.content);\n\nconst finalAssessment = {\n  ...assessment,\n  ai_recommendations: aiRecommendations,\n  learning_path: aiRecommendations.learning_path || [],\n  next_objectives: aiRecommendations.objectives || [],\n  estimated_time_to_next_level: aiRecommendations.estimated_time || '2-4 semaines'\n};\n\nreturn [{ json: finalAssessment }];"
+      },
+      "id": "assessment-merger",
+      "name": "Fusion Évaluation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "resource": "database",
+        "operation": "upsert",
+        "table": "learner_assessments",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "user_id": "={{ $json.user_id }}",
+            "current_level": "={{ $json.current_level }}",
+            "confidence_score": "={{ $json.confidence_score }}",
+            "assessment_data": "={{ $json }}",
+            "assessed_at": "={{ $json.assessed_at }}"
+          }
+        }
+      },
+      "id": "save-assessment",
+      "name": "Sauvegarder Évaluation",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "id": "assessment-response",
+      "name": "Réponse Évaluation",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1560, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Évaluation": {
+      "main": [
+        [
+          {
+            "node": "Récupérer Progression",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Récupérer Progression": {
+      "main": [
+        [
+          {
+            "node": "Analyseur de Niveau",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyseur de Niveau": {
+      "main": [
+        [
+          {
+            "node": "Conseiller Pédagogique IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conseiller Pédagogique IA": {
+      "main": [
+        [
+          {
+            "node": "Fusion Évaluation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fusion Évaluation": {
+      "main": [
+        [
+          {
+            "node": "Sauvegarder Évaluation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sauvegarder Évaluation": {
+      "main": [
+        [
+          {
+            "node": "Réponse Évaluation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1.0.0",
+  "meta": {
+    "description": "Évaluation automatisée du niveau d'apprentissage avec recommandations IA",
+    "tags": ["pharmia", "assessment", "ai", "learning"]
+  }
+}
